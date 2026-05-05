@@ -1,0 +1,207 @@
+services:
+  postgresql:
+    image: postgres:18-alpine
+    container_name: postgresql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root_password}
+      POSTGRES_DB: medidrone
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - medidrone-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - medidrone-net
+
+  # Atoms (4000-4999)
+  drone-management:
+    build:
+      context: .
+      dockerfile: apps/atoms/drone_management/Dockerfile
+    container_name: drone-management
+    ports:
+      - "4001:4001"
+    environment:
+      POSTGRES_HOST: postgresql
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root_password}
+      POSTGRES_DB: medidrone
+      PORT: 4001
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - medidrone-net
+
+  inventory:
+    build:
+      context: .
+      dockerfile: apps/atoms/inventory/Dockerfile
+    container_name: inventory
+    ports:
+      - "4004:4004"
+    environment:
+      POSTGRES_HOST: postgresql
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root_password}
+      POSTGRES_DB: medidrone
+      PORT: 4004
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - medidrone-net
+
+  weather:
+    build:
+      context: .
+      dockerfile: apps/atoms/weather/Dockerfile
+    container_name: weather
+    ports:
+      - "4007:4007"
+    environment:
+      PORT: 4007
+    networks:
+      - medidrone-net
+
+  geolocation:
+    build:
+      context: .
+      dockerfile: apps/atoms/geolocation/Dockerfile
+    container_name: geolocation
+    ports:
+      - "4002:4002"
+    environment:
+      PORT: 4002
+    networks:
+      - medidrone-net
+
+  route-planning:
+    build:
+      context: .
+      dockerfile: apps/atoms/route_planning/Dockerfile
+    container_name: route-planning
+    ports:
+      - "4006:4006"
+    environment:
+      PORT: 4006
+    networks:
+      - medidrone-net
+
+  notification:
+    build:
+      context: .
+      dockerfile: apps/atoms/notification/Dockerfile
+    container_name: notification
+    ports:
+      - "4005:4005"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      PORT: 4005
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medidrone-net
+
+  hospital-mock:
+    build:
+      context: .
+      dockerfile: apps/atoms/hospital_mock/Dockerfile
+    container_name: hospital-mock
+    ports:
+      - "4003:4003"
+    environment:
+      PORT: 4003
+    networks:
+      - medidrone-net
+
+  # Composites (5000-5999)
+  order:
+    build:
+      context: .
+      dockerfile: apps/composites/order/Dockerfile
+    container_name: order
+    ports:
+      - "5002:5002"
+    environment:
+      POSTGRES_HOST: postgresql
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root_password}
+      POSTGRES_DB: medidrone
+      INVENTORY_URL: http://inventory:4004
+      PORT: 5002
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medidrone-net
+
+  drone-dispatch:
+    build:
+      context: .
+      dockerfile: apps/composites/drone_dispatch/Dockerfile
+    container_name: drone-dispatch
+    ports:
+      - "5001:5001"
+    environment:
+      ORDER_URL: http://order:5002
+      DRONE_MGMT_URL: http://drone-management:4001
+      WEATHER_URL: http://weather:4007
+      GEOLOCATION_URL: http://geolocation:4002
+      ROUTE_URL: http://route-planning:4006
+      PORT: 5001
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medidrone-net
+
+  # Frontend (3000-3999)
+  ui:
+    image: medi-drone-frontend:latest
+    container_name: medidrone-ui
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      VITE_API_BASE_URL: http://localhost:8000 # Kong Gateway
+    networks:
+      - medidrone-net
+
+  kong:
+    image: kong:3.8
+    container_name: kong
+    volumes:
+      - ./infra/kong:/kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    networks:
+      - medidrone-net
+
+networks:
+  medidrone-net:
+    driver: bridge

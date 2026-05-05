@@ -1,0 +1,4 @@
+[project]
+name = "drone-dispatch"
+version = "0.1.0"
+dependencies = []

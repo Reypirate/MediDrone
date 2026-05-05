@@ -1,0 +1,43 @@
+[project]
+name = "medi-drone"
+version = "0.1.0"
+description = "Modernized Medi-Drone Microservices"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "sqlmodel>=0.0.22",
+    "uvicorn>=0.30.0",
+    "pydantic-settings>=2.5.0",
+    "psycopg2-binary>=2.9.9",
+    "pika>=1.3.2",
+    "python-multipart>=0.0.12",
+    "httpx>=0.27.0",
+    "flask-cors>=4.0.0",
+    "scalar-fastapi>=1.8.1",
+    "twilio>=9.10.4",
+]
+
+[tool.uv]
+workspace = { members = ["apps/atoms/*", "apps/composites/*", "apps/shared"] }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP"]
+ignore = ["B008"]  # Ignore function calls in defaults for FastAPI Depends
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.11",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.15.1",
+    "respx>=0.23.1",
+    "ruff>=0.15.9",
+    "testcontainers[postgres]>=4.14.2",
+]

@@ -1,0 +1,48 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+*.log
+
+# Node
+node_modules/
+dist
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
+CLAUDE.md
+memory/
+docs/
+
+# Development scripts
+scripts/
+
+.ruff_cache
+.venv
+
+# Project Specific
+ScenarioOverview.md
+AGENT.md
+.python-version
+
+# Databases and Local Data
+*.db
+*.sqlite3
+.data/
+data/
+
+# Additional Python
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov/
